@@ -1,0 +1,2335 @@
+# openapi: 3.0.3
+# info:
+#   title: AgroLand Integration Platform API
+#   description: |
+#     # Интеграционная платформа для агро-земельного маркетплейса
+    
+#     О проекте
+#     Проект разработан в рамках курсовой работы по теме "Разработка интеграционного решения для взаимодействия информационных систем".
+    
+#     Основные интеграции
+#     1. Росреестр API - проверка кадастровых данных, запрос выписок ЕГРН
+#     2. OpenStreetMap Nominatim API - геокодирование, поиск инфраструктуры
+#     3. Внутренняя аналитическая система - анализ земельных участков
+    
+#     Система аутентификации
+#     Публичные API - без аутентификации
+#     Защищенные API - требуют API ключ в заголовке `X-API-Key`
+#     Пользовательские API - требуют JWT токен
+    
+#     Архитектура решения
+#     Клиент → API Gateway → [Валидация → Rate Limiting → Маршрутизация] → Сервисы → Адаптеры → Внешние API
+    
+#     Быстрый старт
+#     1. Зарегистрируйтесь: `POST /supplier/register`
+#     2. Получите API ключ: `POST /api/user/api-keys`
+#     3. Используйте API ключ в заголовках: `X-API-Key: ваш_ключ`
+    
+#   version: 1.0.0
+#   contact:
+#     name: AgroLand Development Team
+#     email: api-support@agroland.ru
+#   license:
+#     name: MIT
+#     url: https://opensource.org/licenses/MIT
+
+# servers:
+#   - url: http://localhost:5000/api
+#     description: Локальный сервер разработки
+#   - url: https://api.agroland.ru/v1
+#     description: Продакшн сервер
+
+# tags:
+#   - name: Аутентификация
+#     description: Регистрация, вход, управление API ключами
+#   - name: Поставщики
+#     description: Управление поставщиками (фермерами)
+#   - name: Участки
+#     description: Управление земельными участками
+#   - name: Геокодирование
+#     description: Интеграция с OpenStreetMap (OSM)
+#   - name: Росреестр
+#     description: Интеграция с API Росреестра
+#   - name: Аналитика
+#     description: Анализ земельных участков
+#   - name: Публичный доступ
+#     description: API без аутентификации
+
+# paths:
+
+#   # =================== АУТЕНТИФИКАЦИЯ ===================
+  
+#   /login:
+#     post:
+#       tags:
+#         - Аутентификация
+#       summary: Вход в систему
+#       description: Получение JWT токена для доступа к API
+#       operationId: loginUser
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               type: object
+#               required:
+#                 - login
+#                 - password
+#               properties:
+#                 login:
+#                   type: string
+#                   description: Имя пользователя или email
+#                   example: "supplier123"
+#                 password:
+#                   type: string
+#                   format: password
+#                   description: Пароль пользователя
+#                   example: "secure_password_123"
+#       responses:
+#         '200':
+#           description: Успешный вход
+#           content:
+#             application/json:
+#               schema:
+#                 type: object
+#                 properties:
+#                   success:
+#                     type: boolean
+#                     example: true
+#                   message:
+#                     type: string
+#                     example: "Вход успешен!"
+#                   token:
+#                     type: string
+#                     description: JWT токен для последующих запросов
+#                     example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+#                   user:
+#                     $ref: '#/components/schemas/UserInfo'
+#         '401':
+#           description: Неверные учетные данные
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+
+#   /supplier/register:
+#     post:
+#       tags:
+#         - Аутентификация
+#       summary: Регистрация нового поставщика
+#       description: Создание учетной записи поставщика (фермера)
+#       operationId: registerSupplier
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               $ref: '#/components/schemas/SupplierRegistration'
+#       responses:
+#         '201':
+#           description: Поставщик успешно зарегистрирован
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/RegistrationResponse'
+#         '400':
+#           description: Ошибка валидации или пользователь уже существует
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+
+#   # =================== API КЛЮЧИ ===================
+
+#   /user/api-keys:
+#     post:
+#       tags:
+#         - Аутентификация
+#       summary: Создать новый API ключ
+#       description: |
+#         Генерация API ключа для доступа к защищенным API.
+        
+#         Внимание: Ключ показывается только один раз!
+#       security:
+#         - BearerAuth: []
+#       requestBody:
+#         content:
+#           application/json:
+#             schema:
+#               type: object
+#               properties:
+#                 name:
+#                   type: string
+#                   description: Название ключа для идентификации
+#                   example: "Мой ключ для интеграции с CRM"
+#                 permissions:
+#                   type: array
+#                   items:
+#                     type: string
+#                     enum: [public.read, suppliers.read, places.read, places.analyze, geocoding, rosreestr.check, rosreestr.extract]
+#                   description: Права доступа
+#                   example: ["public.read", "geocoding", "rosreestr.check"]
+#                 rate_limit:
+#                   type: integer
+#                   description: Суточный лимит запросов
+#                   minimum: 10
+#                   maximum: 10000
+#                   default: 1000
+#                   example: 500
+#       responses:
+#         '201':
+#           description: API ключ успешно создан
+#           content:
+#             application/json:
+#               schema:
+#                 type: object
+#                 properties:
+#                   success:
+#                     type: boolean
+#                     example: true
+#                   message:
+#                     type: string
+#                     example: "API ключ создан"
+#                   data:
+#                     $ref: '#/components/schemas/ApiKey'
+#                   warning:
+#                     type: string
+#                     example: "Сохраните этот ключ! Он покажется только один раз."
+#         '401':
+#           $ref: '#/components/responses/UnauthorizedError'
+
+#     get:
+#       tags:
+#         - Аутентификация
+#       summary: Получить список API ключей пользователя
+#       description: Возвращает список всех API ключей текущего пользователя (ключи маскируются)
+#       security:
+#         - BearerAuth: []
+#       responses:
+#         '200':
+#           description: Список API ключей
+#           content:
+#             application/json:
+#               schema:
+#                 type: object
+#                 properties:
+#                   success:
+#                     type: boolean
+#                     example: true
+#                   data:
+#                     type: array
+#                     items:
+#                       $ref: '#/components/schemas/ApiKeyInfo'
+
+#   # =================== ПУБЛИЧНЫЕ API ===================
+
+#   /public/suppliers:
+#     get:
+#       tags:
+#         - Публичный доступ
+#         - Поставщики
+#       summary: Получить список поставщиков
+#       description: Публичный список поставщиков (фермеров) с пагинацией и фильтрацией
+#       parameters:
+#         - name: page
+#           in: query
+#           schema:
+#             type: integer
+#             minimum: 1
+#             default: 1
+#           description: Номер страницы
+#         - name: limit
+#           in: query
+#           schema:
+#             type: integer
+#             minimum: 1
+#             maximum: 100
+#             default: 20
+#           description: Количество элементов на странице
+#         - name: category
+#           in: query
+#           schema:
+#             type: string
+#             enum: [vegetables, fruits, grains, dairy, meat, other]
+#           description: Категория продукции
+#         - name: rating_min
+#           in: query
+#           schema:
+#             type: number
+#             minimum: 0
+#             maximum: 5
+#           description: Минимальный рейтинг поставщика
+#       responses:
+#         '200':
+#           description: Список поставщиков
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/PaginatedSuppliers'
+#         '500':
+#           $ref: '#/components/responses/ServerError'
+
+#   /public/places:
+#     get:
+#       tags:
+#         - Публичный доступ
+#         - Участки
+#       summary: Получить список публичных участков
+#       description: Публичный каталог земельных участков с геоданными
+#       parameters:
+#         - name: min_area
+#           in: query
+#           schema:
+#             type: number
+#             minimum: 0
+#           description: Минимальная площадь (м²)
+#         - name: max_area
+#           in: query
+#           schema:
+#             type: number
+#             minimum: 0
+#           description: Максимальная площадь (м²)
+#         - name: category
+#           in: query
+#           schema:
+#             type: string
+#             enum: [agricultural, residential, commercial]
+#           description: Категория земли
+#         - name: page
+#           in: query
+#           schema:
+#             type: integer
+#             default: 1
+#         - name: limit
+#           in: query
+#           schema:
+#             type: integer
+#             default: 20
+#       responses:
+#         '200':
+#           description: Список участков
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/PaginatedPlaces'
+
+#   /public/stats:
+#     get:
+#       tags:
+#         - Публичный доступ
+#       summary: Статистика платформы
+#       description: Общая статистика по платформе (количество поставщиков, участков и т.д.)
+#       responses:
+#         '200':
+#           description: Статистика
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/PlatformStats'
+
+#   # =================== ГЕОКОДИРОВАНИЕ (API Key Required) ===================
+
+#   /v1/geocode:
+#     post:
+#       tags:
+#         - Геокодирование
+#       summary: Геокодирование адреса
+#       description: |
+#         Преобразование адреса в географические координаты через OSM/Nominatim.
+        
+#         ### Особенности:
+#         - Rate limit: 1 запрос/сек (ограничение OSM)
+#         - Используется кэширование на 30 дней
+#         - Данные © OpenStreetMap contributors
+#       security:
+#         - ApiKeyAuth: []
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               $ref: '#/components/schemas/GeocodeRequest'
+#       responses:
+#         '200':
+#           description: Успешное геокодирование
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/GeocodeResponse'
+#           headers:
+#             X-RateLimit-Limit:
+#               schema:
+#                 type: integer
+#               description: Суточный лимит запросов
+#             X-RateLimit-Remaining:
+#               schema:
+#                 type: integer
+#               description: Остаток запросов на сегодня
+#             X-RateLimit-Reset:
+#               schema:
+#                 type: string
+#                 format: date-time
+#               description: Время сброса счетчика
+#         '400':
+#           $ref: '#/components/responses/ValidationError'
+#         '401':
+#           $ref: '#/components/responses/UnauthorizedError'
+#         '429':
+#           $ref: '#/components/responses/RateLimitError'
+
+#   /v1/reverse-geocode:
+#     post:
+#       tags:
+#         - Геокодирование
+#       summary: Обратное геокодирование
+#       description: Преобразование координат в адрес через OSM/Nominatim
+#       security:
+#         - ApiKeyAuth: []
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               $ref: '#/components/schemas/ReverseGeocodeRequest'
+#       responses:
+#         '200':
+#           description: Успешное обратное геокодирование
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ReverseGeocodeResponse'
+
+#   /v1/search/places:
+#     post:
+#       tags:
+#         - Геокодирование
+#       summary: Поиск объектов инфраструктуры
+#       description: Поиск точек интереса (POI) в радиусе от координат
+#       security:
+#         - ApiKeyAuth: []
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               $ref: '#/components/schemas/PlaceSearchRequest'
+#       responses:
+#         '200':
+#           description: Найденные объекты
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/PlaceSearchResponse'
+
+#   # =================== РОСРЕЕСТР (API Key Required) ===================
+
+#   /v1/rosreestr/check:
+#     post:
+#       tags:
+#         - Росреестр
+#       summary: Проверка кадастровых данных
+#       description: |
+#         Получение информации об участке из Росреестра по кадастровому номеру.
+        
+#         ### Особенности:
+#         - Данные кэшируются на 1 час
+#         - При ошибке API возвращаются fallback-данные
+#         - Поддерживает batch-обработку
+#       security:
+#         - ApiKeyAuth: []
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               $ref: '#/components/schemas/RosreestrCheckRequest'
+#       responses:
+#         '200':
+#           description: Кадастровые данные
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/CadastralInfo'
+#         '400':
+#           $ref: '#/components/responses/ValidationError'
+
+#   /v1/rosreestr/extract:
+#     post:
+#       tags:
+#         - Росреестр
+#       summary: Запрос выписки из ЕГРН
+#       description: Заказ электронной выписки из Единого государственного реестра недвижимости
+#       security:
+#         - ApiKeyAuth: []
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               $ref: '#/components/schemas/ExtractRequest'
+#       responses:
+#         '200':
+#           description: Запрос на выписку создан
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ExtractResponse'
+
+#   /v1/rosreestr/batch-check:
+#     post:
+#       tags:
+#         - Росреестр
+#       summary: Пакетная проверка кадастровых номеров
+#       description: Одновременная проверка нескольких кадастровых номеров (максимум 50)
+#       security:
+#         - ApiKeyAuth: []
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               $ref: '#/components/schemas/BatchCheckRequest'
+#       responses:
+#         '200':
+#           description: Результаты пакетной проверки
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/BatchCheckResponse'
+#         '400':
+#           description: Слишком много номеров или неверный формат
+
+#   /v1/rosreestr/extract/{extractId}/status:
+#     get:
+#       tags:
+#         - Росреестр
+#       summary: Проверка статуса выписки
+#       description: Получение текущего статуса запрошенной выписки ЕГРН
+#       security:
+#         - ApiKeyAuth: []
+#       parameters:
+#         - name: extractId
+#           in: path
+#           required: true
+#           schema:
+#             type: string
+#       responses:
+#         '200':
+#           description: Статус выписки
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ExtractStatus'
+#         '404':
+#           description: Выписка не найдена
+
+#   # =================== АНАЛИТИКА УЧАСТКОВ ===================
+
+#   /v1/places/{id}/analysis:
+#     get:
+#       tags:
+#         - Аналитика
+#         - Участки
+#       summary: Комплексный анализ участка
+#       description: |
+#         Полный анализ земельного участка с интеграцией данных из:
+#         - Росреестра (кадастровые данные)
+#         - OSM (геоданные, инфраструктура)
+#         - Внутренней аналитики
+#       security:
+#         - ApiKeyAuth: []
+#       parameters:
+#         - name: id
+#           in: path
+#           required: true
+#           schema:
+#             type: integer
+#           description: ID участка в системе
+#         - name: include_rosreestr
+#           in: query
+#           schema:
+#             type: boolean
+#             default: true
+#           description: Включать данные Росреестра
+#         - name: include_geodata
+#           in: query
+#           schema:
+#             type: boolean
+#             default: true
+#           description: Включать геоданные
+#       responses:
+#         '200':
+#           description: Результаты анализа
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/PlaceAnalysis'
+#         '404':
+#           description: Участок не найден
+
+#   # =================== ПОСТАВЩИКИ (API Key Required) ===================
+
+#   /v1/suppliers/{id}/details:
+#     get:
+#       tags:
+#         - Поставщики
+#       summary: Подробная информация о поставщике
+#       description: Расширенная информация о поставщике (доступно только с API ключом)
+#       security:
+#         - ApiKeyAuth: []
+#       parameters:
+#         - name: id
+#           in: path
+#           required: true
+#           schema:
+#             type: integer
+#       responses:
+#         '200':
+#           description: Детальная информация
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/SupplierDetails'
+
+#   # =================== УЧАСТКИ (JWT Required) ===================
+
+#   /supplier/places:
+#     post:
+#       tags:
+#         - Участки
+#       summary: Добавить участок поставщику
+#       description: Добавление нового земельного участка в профиль поставщика
+#       security:
+#         - BearerAuth: []
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               $ref: '#/components/schemas/AddPlaceRequest'
+#       responses:
+#         '201':
+#           description: Участок успешно добавлен
+#           content:
+#             application/json:
+#               schema:
+#                 type: object
+#                 properties:
+#                   success:
+#                     type: boolean
+#                     example: true
+#                   message:
+#                     type: string
+#                     example: "Участок успешно добавлен"
+#                   placeId:
+#                     type: integer
+#                     example: 123
+#         '401':
+#           $ref: '#/components/responses/UnauthorizedError'
+
+#     get:
+#       tags:
+#         - Участки
+#       summary: Получить участки поставщика
+#       description: Получение списка участков текущего поставщика
+#       security:
+#         - BearerAuth: []
+#       responses:
+#         '200':
+#           description: Список участков
+#           content:
+#             application/json:
+#               schema:
+#                 type: object
+#                 properties:
+#                   success:
+#                     type: boolean
+#                     example: true
+#                   places:
+#                     type: array
+#                     items:
+#                       $ref: '#/components/schemas/SupplierPlace'
+
+#   /supplier/profile:
+#     get:
+#       tags:
+#         - Поставщики
+#       summary: Получить профиль поставщика
+#       description: Получение профиля текущего поставщика
+#       security:
+#         - BearerAuth: []
+#       responses:
+#         '200':
+#           description: Профиль поставщика
+#           content:
+#             application/json:
+#               schema:
+#                 type: object
+#                 properties:
+#                   success:
+#                     type: boolean
+#                     example: true
+#                   supplier:
+#                     $ref: '#/components/schemas/SupplierProfile'
+
+# components:
+#   securitySchemes:
+#     ApiKeyAuth:
+#       type: apiKey
+#       in: header
+#       name: X-API-Key
+#       description: |
+#         API ключ для доступа к защищенным API.
+#         Получить можно в личном кабинете после регистрации.
+        
+#         Пример: `X-API-Key: ak_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789`
+#     BearerAuth:
+#       type: http
+#       scheme: bearer
+#       bearerFormat: JWT
+#       description: |
+#         JWT токен для доступа к пользовательским API.
+#         Получить можно при входе в систему (`POST /login`).
+        
+#         Пример: `Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
+
+#   schemas:
+#     # ========== БАЗОВЫЕ СХЕМЫ ==========
+#     Error:
+#       type: object
+#       required:
+#         - success
+#         - error
+#         - message
+#       properties:
+#         success:
+#           type: boolean
+#           example: false
+#         error:
+#           type: string
+#           description: Код ошибки
+#           example: "VALIDATION_ERROR"
+#         message:
+#           type: string
+#           description: Описание ошибки
+#           example: "Неверный формат кадастрового номера"
+#         field:
+#           type: string
+#           description: Поле с ошибкой (если применимо)
+#           example: "kadastr_number"
+#         details:
+#           type: string
+#           description: Детальная информация (только в development)
+#           example: "Expected format: XX:XX:XXXXXX:XXX"
+
+#     Pagination:
+#       type: object
+#       properties:
+#         page:
+#           type: integer
+#           example: 1
+#         limit:
+#           type: integer
+#           example: 20
+#         total:
+#           type: integer
+#           example: 145
+#         pages:
+#           type: integer
+#           example: 8
+
+#     # ========== АУТЕНТИФИКАЦИЯ ==========
+#     UserInfo:
+#       type: object
+#       properties:
+#         userId:
+#           type: integer
+#           example: 123
+#         roleId:
+#           type: integer
+#           example: 2
+#         role:
+#           type: string
+#           example: "Поставщик"
+#         username:
+#           type: string
+#           example: "supplier123"
+#         email:
+#           type: string
+#           format: email
+#           example: "supplier@example.com"
+
+#     SupplierRegistration:
+#       type: object
+#       required:
+#         - name
+#         - username
+#         - email
+#         - password
+#       properties:
+#         name:
+#           type: string
+#           description: Название компании/фермы
+#           example: "ООО 'Агротехника'"
+#         description:
+#           type: string
+#           description: Описание деятельности
+#           example: "Производитель органических овощей"
+#         username:
+#           type: string
+#           description: Имя пользователя для входа
+#           example: "agrotech2024"
+#         email:
+#           type: string
+#           format: email
+#           description: Email для связи
+#           example: "info@agrotech.ru"
+#         password:
+#           type: string
+#           format: password
+#           minLength: 8
+#           description: Пароль (мин. 8 символов)
+#           example: "SecurePass123!"
+
+#     RegistrationResponse:
+#       type: object
+#       properties:
+#         success:
+#           type: boolean
+#           example: true
+#         message:
+#           type: string
+#           example: "Поставщик успешно зарегистрирован"
+#         userId:
+#           type: integer
+#           example: 456
+#         token:
+#           type: string
+#           example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+#         user:
+#           $ref: '#/components/schemas/UserInfo'
+
+#     ApiKey:
+#       type: object
+#       properties:
+#         id:
+#           type: integer
+#           example: 1
+#         name:
+#           type: string
+#           example: "Мой ключ для интеграции"
+#         key:
+#           type: string
+#           description: API ключ (показывается только при создании)
+#           example: "ak_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789"
+#         permissions:
+#           type: array
+#           items:
+#             type: string
+#           example: ["public.read", "geocoding", "rosreestr.check"]
+#         rate_limit:
+#           type: integer
+#           example: 1000
+#         created_at:
+#           type: string
+#           format: date-time
+
+#     ApiKeyInfo:
+#       type: object
+#       properties:
+#         id:
+#           type: integer
+#           example: 1
+#         name:
+#           type: string
+#           example: "Мой ключ для интеграции"
+#         key:
+#           type: string
+#           description: Маскированный ключ
+#           example: "••••••••••••••••••••••••••••••••••••6789"
+#         permissions:
+#           type: array
+#           items:
+#             type: string
+#         rate_limit:
+#           type: integer
+#         requests_today:
+#           type: integer
+#           example: 156
+#         is_active:
+#           type: boolean
+#           example: true
+#         created_at:
+#           type: string
+#           format: date-time
+#         last_used:
+#           type: string
+#           format: date-time
+#           nullable: true
+
+#     # ========== ПОСТАВЩИКИ ==========
+#     PublicSupplier:
+#       type: object
+#       properties:
+#         id:
+#           type: integer
+#           example: 123
+#         name:
+#           type: string
+#           example: "ООО 'Агротехника'"
+#         rating:
+#           type: number
+#           minimum: 0
+#           maximum: 5
+#           example: 4.5
+#         description:
+#           type: string
+#           example: "Производитель органических овощей"
+#         contact_email:
+#           type: string
+#           format: email
+#           example: "contact@agrotech.ru"
+#         places_count:
+#           type: integer
+#           example: 5
+#         total_area:
+#           type: number
+#           example: 12500.5
+
+#     PaginatedSuppliers:
+#       type: object
+#       properties:
+#         success:
+#           type: boolean
+#           example: true
+#         data:
+#           type: array
+#           items:
+#             $ref: '#/components/schemas/PublicSupplier'
+#         pagination:
+#           $ref: '#/components/schemas/Pagination'
+
+#     SupplierDetails:
+#       type: object
+#       properties:
+#         id:
+#           type: integer
+#           example: 123
+#         name:
+#           type: string
+#           example: "ООО 'Агротехника'"
+#         rating:
+#           type: number
+#           example: 4.5
+#         description:
+#           type: string
+#           example: "Производитель органических овощей с 2010 года"
+#         contact_info:
+#           type: object
+#           properties:
+#             email:
+#               type: string
+#               format: email
+#             phone:
+#               type: string
+#             website:
+#               type: string
+#               format: uri
+#         total_places:
+#           type: integer
+#           example: 5
+#         total_area:
+#           type: number
+#           example: 12500.5
+#         total_deals:
+#           type: integer
+#           example: 45
+#         avg_product_rating:
+#           type: number
+#           example: 4.2
+#         reviews:
+#           type: array
+#           items:
+#             $ref: '#/components/schemas/Review'
+
+#     SupplierProfile:
+#       type: object
+#       properties:
+#         id:
+#           type: integer
+#         name:
+#           type: string
+#         rating:
+#           type: number
+#         description:
+#           type: string
+#         user:
+#           $ref: '#/components/schemas/UserInfo'
+
+#     Review:
+#       type: object
+#       properties:
+#         rating:
+#           type: number
+#           example: 5
+#         comment:
+#           type: string
+#           example: "Отличный поставщик, качественная продукция"
+#         created_at:
+#           type: string
+#           format: date-time
+#         customer_name:
+#           type: string
+#           example: "Иванов И.И."
+
+#     # ========== УЧАСТКИ ==========
+#     PublicPlace:
+#       type: object
+#       properties:
+#         id:
+#           type: integer
+#           example: 456
+#         address:
+#           type: string
+#           example: "Московская область, Раменский район"
+#         kadastrnumber:
+#           type: string
+#           example: "50:15:0123456:789"
+#         area:
+#           type: number
+#           example: 2500.75
+#         category:
+#           type: string
+#           example: "agricultural"
+#         supplier_name:
+#           type: string
+#           example: "ООО 'Агротехника'"
+#         supplier_rating:
+#           type: number
+#           example: 4.5
+#         boundaries:
+#           type: object
+#           description: GeoJSON полигон участка
+#           properties:
+#             type:
+#               type: string
+#               example: "Polygon"
+#             coordinates:
+#               type: array
+
+#     PaginatedPlaces:
+#       type: object
+#       properties:
+#         success:
+#           type: boolean
+#           example: true
+#         data:
+#           type: array
+#           items:
+#             $ref: '#/components/schemas/PublicPlace'
+#         pagination:
+#           $ref: '#/components/schemas/Pagination'
+
+#     SupplierPlace:
+#       type: object
+#       properties:
+#         id:
+#           type: integer
+#         address:
+#           type: string
+#         kadastrnumber:
+#           type: string
+#         area:
+#           type: number
+#         boundaries:
+#           type: object
+#         created_at:
+#           type: string
+#           format: date-time
+
+#     AddPlaceRequest:
+#       type: object
+#       required:
+#         - address
+#         - kadastrNumber
+#         - area
+#         - boundaries
+#       properties:
+#         address:
+#           type: string
+#           example: "Московская область, Раменский район"
+#         kadastrNumber:
+#           type: string
+#           pattern: '^\d{2}:\d{2}:\d{6,7}:\d+$'
+#           example: "50:15:0123456:789"
+#         area:
+#           type: number
+#           minimum: 0
+#           example: 2500.75
+#         boundaries:
+#           type: object
+#           description: GeoJSON полигон
+#           properties:
+#             type:
+#               type: string
+#               example: "Polygon"
+#             coordinates:
+#               type: array
+
+#     PlatformStats:
+#       type: object
+#       properties:
+#         success:
+#           type: boolean
+#           example: true
+#         data:
+#           type: object
+#           properties:
+#             total_suppliers:
+#               type: integer
+#               example: 145
+#             total_places:
+#               type: integer
+#               example: 892
+#             total_area:
+#               type: number
+#               example: 12500000.5
+#             total_customers:
+#               type: integer
+#               example: 567
+#             purchases_last_month:
+#               type: integer
+#               example: 45
+
+#     # ========== ГЕОКОДИРОВАНИЕ ==========
+#     GeocodeRequest:
+#       type: object
+#       required:
+#         - address
+#       properties:
+#         address:
+#           type: string
+#           description: Адрес для геокодирования
+#           example: "Москва, Красная площадь, 1"
+#           maxLength: 500
+#         limit:
+#           type: integer
+#           description: Максимальное количество результатов
+#           minimum: 1
+#           maximum: 20
+#           default: 5
+#           example: 5
+
+#     GeocodeResponse:
+#       type: object
+#       properties:
+#         success:
+#           type: boolean
+#           example: true
+#         data:
+#           type: array
+#           items:
+#             $ref: '#/components/schemas/GeocodingResult'
+#         meta:
+#           type: object
+#           properties:
+#             count:
+#               type: integer
+#               example: 3
+#             attribution:
+#               type: string
+#               example: "© OpenStreetMap contributors"
+#             cached:
+#               type: boolean
+#               example: false
+
+#     GeocodingResult:
+#       type: object
+#       properties:
+#         display_name:
+#           type: string
+#           example: "Москва, Красная площадь, 1"
+#         lat:
+#           type: string
+#           example: "55.753930"
+#         lon:
+#           type: string
+#           example: "37.620795"
+#         address:
+#           $ref: '#/components/schemas/AddressDetails'
+#         boundingbox:
+#           type: array
+#           items:
+#             type: string
+#           example: ["55.753", "55.754", "37.620", "37.621"]
+
+#     AddressDetails:
+#       type: object
+#       properties:
+#         city:
+#           type: string
+#           example: "Москва"
+#         country:
+#           type: string
+#           example: "Россия"
+#         country_code:
+#           type: string
+#           example: "ru"
+#         road:
+#           type: string
+#           example: "Красная площадь"
+#         house_number:
+#           type: string
+#           example: "1"
+#         postcode:
+#           type: string
+#           example: "109012"
+
+#     ReverseGeocodeRequest:
+#       type: object
+#       required:
+#         - lat
+#         - lon
+#       properties:
+#         lat:
+#           type: number
+#           description: Широта
+#           minimum: -90
+#           maximum: 90
+#           example: 55.753930
+#         lon:
+#           type: number
+#           description: Долгота
+#           minimum: -180
+#           maximum: 180
+#           example: 37.620795
+
+#     ReverseGeocodeResponse:
+#       type: object
+#       properties:
+#         success:
+#           type: boolean
+#           example: true
+#         data:
+#           $ref: '#/components/schemas/GeocodingResult'
+
+#     PlaceSearchRequest:
+#       type: object
+#       required:
+#         - query
+#       properties:
+#         query:
+#           type: string
+#           description: Поисковый запрос
+#           example: "школа больница магазин"
+#         lat:
+#           type: number
+#           description: Широта центра поиска
+#           example: 55.753930
+#         lon:
+#           type: number
+#           description: Долгота центра поиска
+#           example: 37.620795
+#         radius_km:
+#           type: number
+#           description: Радиус поиска в километрах
+#           minimum: 0.1
+#           maximum: 50
+#           default: 10
+#           example: 5
+
+#     PlaceSearchResponse:
+#       type: object
+#       properties:
+#         success:
+#           type: boolean
+#           example: true
+#         data:
+#           type: array
+#           items:
+#             $ref: '#/components/schemas/PlaceSearchResult'
+#         meta:
+#           type: object
+#           properties:
+#             count:
+#               type: integer
+#               example: 8
+#             radius_km:
+#               type: number
+#               example: 5
+
+#     PlaceSearchResult:
+#       type: object
+#       properties:
+#         name:
+#           type: string
+#           example: "Школа №123"
+#         lat:
+#           type: number
+#           example: 55.754000
+#         lon:
+#           type: number
+#           example: 37.621000
+#         type:
+#           type: string
+#           example: "school"
+#         category:
+#           type: string
+#           example: "education"
+#         distance:
+#           type: number
+#           description: Расстояние в метрах
+#           example: 350
+
+#     # ========== РОСРЕЕСТР ==========
+#     RosreestrCheckRequest:
+#       type: object
+#       required:
+#         - kadastr_number
+#       properties:
+#         kadastr_number:
+#           type: string
+#           description: Кадастровый номер участка
+#           pattern: '^\d{2}:\d{2}:\d{6,7}:\d+$'
+#           example: "77:01:0001001:123"
+#         force_refresh:
+#           type: boolean
+#           description: Игнорировать кэш и запросить свежие данные
+#           default: false
+#           example: false
+
+#     CadastralInfo:
+#       type: object
+#       properties:
+#         kadastrNumber:
+#           type: string
+#           example: "77:01:0001001:123"
+#         address:
+#           type: string
+#           example: "г. Москва, ул. Примерная, д. 1"
+#         area:
+#           type: number
+#           description: Площадь в квадратных метрах
+#           example: 1500.5
+#         category:
+#           type: string
+#           example: "земли населенных пунктов"
+#         owner:
+#           type: string
+#           example: "Иванов Иван Иванович"
+#         cadastralValue:
+#           type: number
+#           description: Кадастровая стоимость в рублях
+#           example: 7500000
+#         restrictions:
+#           type: array
+#           items:
+#             type: string
+#           example: ["Залог"]
+#         geometry:
+#           type: object
+#           description: Геометрия участка
+#         lastUpdated:
+#           type: string
+#           format: date-time
+#           example: "2024-01-15T10:30:00Z"
+#         status:
+#           type: string
+#           enum: [active, inactive, suspended]
+#           example: "active"
+#         source:
+#           type: string
+#           description: Источник данных
+#           example: "rosreestr"
+#         is_mock:
+#           type: boolean
+#           description: Являются ли данные мок-данными
+#           example: false
+
+#     ExtractRequest:
+#       type: object
+#       required:
+#         - kadastr_number
+#       properties:
+#         kadastr_number:
+#           type: string
+#           example: "77:01:0001001:123"
+#         type:
+#           type: string
+#           description: Тип выписки
+#           enum: [standard, extended, urgent]
+#           default: "standard"
+#           example: "standard"
+
+#     ExtractResponse:
+#       type: object
+#       properties:
+#         success:
+#           type: boolean
+#           example: true
+#         data:
+#           $ref: '#/components/schemas/ExtractInfo'
+#         meta:
+#           type: object
+#           properties:
+#             extract_id:
+#               type: string
+#             status:
+#               type: string
+#             note:
+#               type: string
+
+#     ExtractInfo:
+#       type: object
+#       properties:
+#         extractId:
+#           type: string
+#           example: "EXTRACT_123456789_abc123"
+#         kadastrNumber:
+#           type: string
+#           example: "77:01:0001001:123"
+#         issueDate:
+#           type: string
+#           format: date-time
+#           example: "2024-01-15T10:30:00Z"
+#         status:
+#           type: string
+#           enum: [pending, ready, error]
+#           example: "pending"
+#         downloadUrl:
+#           type: string
+#           format: uri
+#           description: Ссылка для скачивания (если готова)
+#           example: "https://api.rosreestr.gov.ru/extracts/EXTRACT_123.pdf"
+
+#     ExtractStatus:
+#       type: object
+#       properties:
+#         success:
+#           type: boolean
+#         data:
+#           $ref: '#/components/schemas/ExtractInfo'
+
+#     BatchCheckRequest:
+#       type: object
+#       required:
+#         - kadastr_numbers
+#       properties:
+#         kadastr_numbers:
+#           type: array
+#           description: Массив кадастровых номеров (максимум 50)
+#           maxItems: 50
+#           items:
+#             type: string
+#             pattern: '^\d{2}:\d{2}:\d{6,7}:\d+$'
+#           example: ["77:01:0001001:123", "77:01:0001002:124"]
+
+#     BatchCheckResponse:
+#       type: object
+#       properties:
+#         success:
+#           type: boolean
+#           example: true
+#         data:
+#           type: array
+#           items:
+#             $ref: '#/components/schemas/CadastralInfo'
+#         meta:
+#           type: object
+#           properties:
+#             total:
+#               type: integer
+#               example: 2
+#             processed:
+#               type: integer
+#               example: 2
+#             failed:
+#               type: integer
+#               example: 0
+
+#     # ========== АНАЛИТИКА ==========
+#     PlaceAnalysis:
+#       type: object
+#       properties:
+#         success:
+#           type: boolean
+#           example: true
+#         data:
+#           type: object
+#           properties:
+#             basic_info:
+#               $ref: '#/components/schemas/PlaceBasicInfo'
+#             rosreestr_data:
+#               $ref: '#/components/schemas/CadastralInfo'
+#             geodata:
+#               $ref: '#/components/schemas/GeocodingResult'
+#             infrastructure:
+#               $ref: '#/components/schemas/InfrastructureAnalysis'
+#             insights:
+#               type: array
+#               items:
+#                 $ref: '#/components/schemas/Insight'
+#             generated_at:
+#               type: string
+#               format: date-time
+
+#     PlaceBasicInfo:
+#       type: object
+#       properties:
+#         id:
+#           type: integer
+#           example: 456
+#         address:
+#           type: string
+#           example: "Московская область, Раменский район"
+#         area:
+#           type: number
+#           example: 2500.75
+#         kadastr_number:
+#           type: string
+#           example: "50:15:0123456:789"
+
+#     InfrastructureAnalysis:
+#       type: object
+#       properties:
+#         nearby_places:
+#           type: array
+#           items:
+#             $ref: '#/components/schemas/PlaceSearchResult'
+#         count:
+#           type: integer
+#           example: 12
+
+#     Insight:
+#       type: object
+#       properties:
+#         type:
+#           type: string
+#           example: "area"
+#         level:
+#           type: string
+#           enum: [info, warning, success, danger]
+#           example: "info"
+#         message:
+#           type: string
+#           example: "Средний участок, может использоваться для фермерского хозяйства"
+#         recommendation:
+#           type: string
+#           example: "Подходит для небольшой фермы или агробизнеса"
+
+#   responses:
+#     ValidationError:
+#       description: Ошибка валидации входных данных
+#       content:
+#         application/json:
+#           schema:
+#             $ref: '#/components/schemas/Error'
+#           example:
+#             success: false
+#             error: "VALIDATION_ERROR"
+#             message: "Неверный формат кадастрового номера"
+#             field: "kadastr_number"
+#             details: "Expected format: XX:XX:XXXXXX:XXX"
+
+#     UnauthorizedError:
+#       description: Неавторизованный доступ
+#       content:
+#         application/json:
+#           schema:
+#             $ref: '#/components/schemas/Error'
+#           example:
+#             success: false
+#             error: "UNAUTHORIZED"
+#             message: "API key is required"
+
+#     RateLimitError:
+#       description: Превышен лимит запросов
+#       content:
+#         application/json:
+#           schema:
+#             $ref: '#/components/schemas/Error'
+#           example:
+#             success: false
+#             error: "RATE_LIMIT_EXCEEDED"
+#             message: "Превышен суточный лимит запросов"
+#             details: "Limit: 1000 requests per day"
+
+#     ServerError:
+#       description: Внутренняя ошибка сервера
+#       content:
+#         application/json:
+#           schema:
+#             $ref: '#/components/schemas/Error'
+#           example:
+#             success: false
+#             error: "INTERNAL_SERVER_ERROR"
+#             message: "Произошла внутренняя ошибка сервера"
+openapi: 3.0.3
+info:
+  title: Agro Platform API
+  version: 1.0.0
+  description: |
+    Внутренний и публичный API агро-платформы.
+    Основан на PostgreSQL (users, suppliers, places, products и др.).
+
+servers:
+  - url: http://localhost:5000
+    description: Local development
+
+tags:
+  - name: Auth
+    description: Аутентификация и пользователи
+  - name: Public
+    description: Публичные каталоги (чтение без авторизации)
+  - name: Supplier
+    description: Операции для поставщика
+  - name: Admin
+    description: Операции администратора
+  - name: System
+    description: Служебные маршруты
+
+paths:
+  # ---------- PUBLIC (READ-ONLY) ----------
+
+  /api/public/suppliers:
+    get:
+      tags: [Public]
+      summary: Список поставщиков
+      description: Публичный список поставщиков на основе таблиц suppliers и suppliercopies.
+      responses:
+        '200':
+          description: Список поставщиков
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  suppliers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PublicSupplier'
+
+  /api/public/products:
+    get:
+      tags: [Public]
+      summary: Список продуктов
+      description: Публичный список продуктов на основе таблиц products и productcopies.
+      responses:
+        '200':
+          description: Список продуктов
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  products:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PublicProduct'
+
+  /api/public/places:
+    get:
+      tags: [Public]
+      summary: Список участков
+      description: Публичный список участков на основе таблицы places (без привязки к конкретным пользователям).
+      responses:
+        '200':
+          description: Список участков
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  places:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PublicPlace'
+
+  # ---------- AUTH ----------
+
+  /api/supplier/register:
+    post:
+      tags: [Auth]
+      summary: Регистрация поставщика
+      description: |
+        Создает пользователя с ролью "Поставщик" (roleId = 2) через функцию createUserWithRoleSupplier
+        и возвращает JWT-токен.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplierRegistration'
+      responses:
+        '201':
+          description: Поставщик успешно зарегистрирован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationResponse'
+        '400':
+          description: Ошибка валидации или уникальности
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/users/create:
+    post:
+      tags: [Auth]
+      summary: Создание пользователя (тестовый)
+      description: Создает пользователя в таблице users. Используется для тестирования.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: Пользователь создан
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/UserInfo'
+        '400':
+          description: Ошибка создания пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /login:
+    post:
+      tags: [Auth]
+      summary: Логин пользователя
+      description: |
+        Аутентификация по username и паролю.
+        Возвращает JWT, содержащий userId и roleId.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [login, password]
+              properties:
+                login:
+                  type: string
+                  example: "supplier123"
+                password:
+                  type: string
+                  format: password
+                  example: "SecurePass123!"
+      responses:
+        '200':
+          description: Вход успешен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Неверный логин или пароль
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /api/user/profile:
+    get:
+      tags: [Auth]
+      summary: Профиль аутентифицированного пользователя
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Профиль текущего пользователя из JWT
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  user:
+                    $ref: '#/components/schemas/JwtUser'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  # ---------- SUPPLIER ROUTES ----------
+
+  /api/supplier/profile:
+    get:
+      tags: [Supplier]
+      summary: Получить профиль поставщика
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Профиль поставщика
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  supplier:
+                    $ref: '#/components/schemas/SupplierProfileRaw'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Профиль поставщика не найден
+
+    put:
+      tags: [Supplier]
+      summary: Обновить профиль поставщика
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                rating:
+                  type: number
+                  format: float
+      responses:
+        '200':
+          description: Профиль обновлен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  supplier:
+                    $ref: '#/components/schemas/SupplierProfileRaw'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/supplier/places:
+    get:
+      tags: [Supplier]
+      summary: Получить участки поставщика
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Список участков текущего поставщика
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  places:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SupplierPlace'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    post:
+      tags: [Supplier]
+      summary: Добавить участок поставщику
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddPlaceRequest'
+      responses:
+        '201':
+          description: Участок успешно добавлен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  placeId:
+                    type: integer
+        '400':
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/supplier/places/{placeId}:
+    delete:
+      tags: [Supplier]
+      summary: Удалить участок из профиля поставщика
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: placeId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Участок удален
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Участок не найден или не принадлежит поставщику
+
+  /api/check-cadastr:
+    post:
+      tags: [Supplier]
+      summary: Проверка кадастрового номера (мок)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kadastrNumber]
+              properties:
+                kadastrNumber:
+                  type: string
+                  example: "77:01:0001001:123"
+      responses:
+        '200':
+          description: Результат проверки (реальный или мок)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                  isMock:
+                    type: boolean
+        '400':
+          description: Неверный формат кадастрового номера
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  # ---------- ADMIN ROUTES ----------
+
+  /api/admin/suppliers:
+    get:
+      tags: [Admin]
+      summary: Получить список поставщиков (админ)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Список поставщиков с пагинацией
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  suppliers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdminSupplier'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    post:
+      tags: [Admin]
+      summary: Создать поставщика (админ)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplierRegistration'
+      responses:
+        '201':
+          description: Поставщик создан
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/admin/suppliers/{id}:
+    put:
+      tags: [Admin]
+      summary: Обновить поставщика
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                rating:
+                  type: number
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Данные поставщика обновлены
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Поставщик не найден
+
+  /api/admin/suppliers/{id}/toggle-status:
+    post:
+      tags: [Admin]
+      summary: Блокировка/разблокировка поставщика
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                isActive:
+                  type: boolean
+      responses:
+        '200':
+          description: Статус поставщика изменен
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Поставщик не найден
+
+  # ---------- SYSTEM ----------
+
+  /health:
+    get:
+      tags: [System]
+      summary: Health check
+      responses:
+        '200':
+          description: Состояние сервера
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    UnauthorizedError:
+      description: Неавторизованный доступ
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        pages:
+          type: integer
+
+    UserInfo:
+      type: object
+      properties:
+        userId:
+          type: integer
+        roleId:
+          type: integer
+        role:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+
+    JwtUser:
+      type: object
+      properties:
+        userId:
+          type: integer
+        roleId:
+          type: integer
+        role:
+          type: string
+        username:
+          type: string
+
+    SupplierRegistration:
+      type: object
+      required: [name, username, email, password]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    RegistrationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        userId:
+          type: integer
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserInfo'
+
+    CreateUserRequest:
+      type: object
+      required: [username, email, password, roleId]
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        roleId:
+          type: integer
+
+    LoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserInfo'
+
+    PublicSupplier:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        rating:
+          type: number
+          format: float
+        description:
+          type: string
+
+    PublicProduct:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        unit:
+          type: string
+
+    PublicPlace:
+      type: object
+      properties:
+        id:
+          type: integer
+        address:
+          type: string
+        kadastrnumber:
+          type: string
+        area:
+          type: number
+
+    SupplierProfileRaw:
+      type: object
+      description: Прямая проекция JOIN suppliers + suppliercopies.
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        userid:
+          type: integer
+        rating:
+          type: number
+        description:
+          type: string
+
+    SupplierPlace:
+      type: object
+      properties:
+        id:
+          type: integer
+        address:
+          type: string
+        kadastrnumber:
+          type: string
+        area:
+          type: number
+        boundaries:
+          type: object
+          description: GeoJSON (из ST_AsGeoJSON)
+
+    AddPlaceRequest:
+      type: object
+      required: [address, kadastrNumber, area, boundaries]
+      properties:
+        address:
+          type: string
+        kadastrNumber:
+          type: string
+          example: "50:15:0123456:789"
+        area:
+          type: number
+        boundaries:
+          type: object
+          description: GeoJSON polygon
+
+    AdminSupplier:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        userid:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        rating:
+          type: number
+        description:
+          type: string
+        places_count:
+          type: integer

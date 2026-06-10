@@ -1,0 +1,83 @@
+{
+  "roles": {
+    "admin": "管理员",
+    "supplier": "供应商",
+    "buyer": "买家",
+    "user": "用户"
+  },
+    "supplier": {
+    "loadingData": "正在加载供应商数据...",
+    "statisticsTitle": "供应商统计",
+    "statisticsDescription": "该部分正在开发中。这里将显示您的地块、产品、回复和拍卖统计信息。",
+    "tabs": {
+      "profile": "个人资料",
+      "addPlace": "添加地块",
+      "myPlaces": "我的地块",
+      "customerRequests": "客户请求",
+      "mapCategories": "分类地图",
+      "warehouse": "仓库",
+      "market": "市场",
+      "auctions": "拍卖",
+      "certificates": "证书",
+      "statistics": "统计"
+    }
+  },
+  "home": {
+    "welcomeUser": "欢迎，{{name}}！",
+    "logoutSuccess": "您已退出系统",
+    "home": "主页",
+    "farmPages": "农场",
+    "profile": "个人资料",
+    "cart": "购物车",
+    "logout": "退出"
+  },
+  "customer": {
+    "developerMode": "开发者模式",
+    "developerModeNew": "开发者模式（新版本）",
+    "developerModeEnabled": "开发者模式已开启",
+    "developerModeDisabled": "开发者模式已关闭",
+    "deliveryAddressSaved": "配送地址已保存",
+    "farmerRemovedFromFavorites": "农户已从收藏中移除",
+    "farmerAddedToFavorites": "农户已添加到收藏",
+    "clusterLoadingError": "加载聚类时出错",
+    "dataLoadingError": "加载数据时出错",
+    "searchSettings": "农户搜索通用设置",
+    "calculateDistance": "计算距离",
+    "includeUnripe": "包含未成熟商品",
+    "ecoOnly": "仅 Eco",
+    "changeAddress": "更改地址",
+    "setAddress": "设置地址",
+    "favoriteFarmers": "收藏的农户",
+    "stats": {
+      "farmers": "农户",
+      "products": "产品",
+      "categories": "分类"
+    },
+    "distance": {
+      "upTo25": "最多 25 公里",
+      "upTo50": "最多 50 公里",
+      "upTo100": "最多 100 公里",
+      "upTo200": "最多 200 公里",
+      "upTo500": "最多 500 公里",
+      "all": "全部"
+    },
+    "rating": {
+      "any": "任意评分",
+      "from3": "从 3.0 起",
+      "from4": "从 4.0 起",
+      "from45": "从 4.5 起"
+    },
+    "tabs": {
+      "farmers": "农户",
+      "productsDev": "开发产品",
+      "products": "产品",
+      "requests": "请求",
+      "market": "市场",
+      "purchases": "我的购买",
+      "subscriptions": "我的订阅",
+      "auctions": "拍卖",
+      "favorites": "收藏",
+      "statistics": "统计"
+    }
+  }
+}

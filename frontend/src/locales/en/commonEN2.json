@@ -1,0 +1,90 @@
+{
+  "roles": {
+    "admin": "Administrator",
+    "supplier": "Supplier",
+    "buyer": "Buyer",
+    "user": "User"
+  },
+  "home": {
+    "welcomeUser": "Welcome, {{name}}!",
+    "logoutSuccess": "You have logged out",
+    "home": "Home",
+    "farmPages": "Farm farms",
+    "profile": "Profile",
+    "cart": "Cart",
+    "logout": "Logout"
+  },
+  "customer": {
+    "developerMode": "Developer mode",
+    "developerModeNew": "Developer mode (new version)",
+    "developerModeEnabled": "Developer mode enabled",
+    "developerModeDisabled": "Developer mode disabled",
+    "deliveryAddressSaved": "Delivery address saved",
+    "farmerRemovedFromFavorites": "Farmer removed from favorites",
+    "farmerAddedToFavorites": "Farmer added to favorites",
+    "clusterLoadingError": "Error loading clustering",
+    "dataLoadingError": "Error loading data",
+    "searchSettings": "General farmer search settings",
+    "calculateDistance": "Calculate distance",
+    "includeUnripe": "Include unripe",
+    "ecoOnly": "Eco only",
+    "changeAddress": "Change address",
+    "setAddress": "Set address",
+    "favoriteFarmers": "Favorite farmers",
+    "locationSet": "Location is set",
+    "stats": {
+      "farmers": "Farmers",
+      "products": "Products",
+      "categories": "Categories"
+    },
+    "distance": {
+      "upTo25": "Up to 25 km",
+      "upTo50": "Up to 50 km",
+      "upTo100": "Up to 100 km",
+      "upTo200": "Up to 200 km",
+      "upTo500": "Up to 500 km",
+      "all": "All"
+    },
+    "rating": {
+      "any": "Any rating",
+      "from3": "From 3.0",
+      "from4": "From 4.0",
+      "from45": "From 4.5"
+    },
+    "tabs": {
+      "farmers": "Farmers",
+      "productsDev": "Products Dev",
+      "products": "Products",
+      "requests": "Requests",
+      "market": "Market",
+      "purchases": "My purchases",
+      "subscriptions": "My subscriptions",
+      "auctions": "Auctions",
+      "favorites": "Favorites",
+      "statistics": "Statistics"
+    }
+  },
+  "supplier": {
+    "loadingData": "Loading supplier data...",
+    "statisticsTitle": "Supplier statistics",
+    "statisticsDescription": "This section is under development. Statistics for your places, products, responses, and auctions will be shown here.",
+    "tabs": {
+      "profile": "Profile",
+      "addPlace": "Add place",
+      "myPlaces": "My places",
+      "customerRequests": "Customer requests",
+      "mapCategories": "Category map",
+      "warehouse": "Warehouse",
+      "market": "Market",
+      "auctions": "Auctions",
+      "certificates": "Certificates",
+      "statistics": "Statistics"
+    },
+    "common": {
+      "save": "Save",
+      "cancel": "Cancel",
+      "edit": "Edit",
+      "serverError": "Server error"
+    }
+  }
+}

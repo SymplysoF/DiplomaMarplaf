@@ -1,0 +1,36 @@
+export interface ProductItem {
+    imagePath: any;
+    productId: number;
+    productName: string;
+    objectId: number;
+    objectName: string;
+    varietyId?: number;
+    varietyName?: string;
+    fullProductName: string;
+    farmerId: number;
+    farmerUserId?: number;
+    farmerName: string;
+    farmerRating: number;
+    productRating: number;
+    distance: number;
+    locationType: number;
+    has_eco_certificate?: boolean;
+    price: number;
+    quantity: number;
+    unit: string;
+    isWholesale: boolean;
+    ripenessCategory: number;
+    auctionId?: number;
+    auctionStartPrice?: number;
+    auctionCurrentBid?: number;
+    auctionEndTime?: string;
+    placeId: number;
+    placeAddress: string;
+    coordinates?: { lat: number; lng: number };
+    subscriptionScore?: number;
+    computedRating?: number;
+    clusterId?: number;
+    clusterRank?: number;
+    clusterRankColor?: string;
+    clusterRankScore?: number;
+}

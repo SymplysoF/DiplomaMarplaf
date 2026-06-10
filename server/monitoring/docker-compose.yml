@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  influxdb:
+    image: influxdb:1.8
+    container_name: marplaf-influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      - INFLUXDB_DB=k6
+    volumes:
+      - influxdb_data:/var/lib/influxdb
+
+  prometheus:
+    image: prom/prometheus
+    container_name: marplaf-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - influxdb
+
+  grafana:
+    image: grafana/grafana
+    container_name: marplaf-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - influxdb
+      - prometheus
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+volumes:
+  influxdb_data:
+  grafana_data:

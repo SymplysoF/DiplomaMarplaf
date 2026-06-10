@@ -1,0 +1,90 @@
+{
+  "roles": {
+    "admin": "Администратор",
+    "supplier": "Поставщик",
+    "buyer": "Покупатель",
+    "user": "Пользователь"
+  },
+  "home": {
+    "welcomeUser": "Добро пожаловать, {{name}}!",
+    "logoutSuccess": "Вы вышли из системы",
+    "home": "Главная",
+    "farmPages": "Фермерские хозяйства",
+    "profile": "Профиль",
+    "cart": "Корзина",
+    "logout": "Выйти"
+  },
+  "customer": {
+    "developerMode": "Режим разработчика",
+    "developerModeNew": "Режим разработчика (новая версия)",
+    "developerModeEnabled": "Включен режим разработчика",
+    "developerModeDisabled": "Выключен режим разработчика",
+    "deliveryAddressSaved": "Адрес доставки сохранен",
+    "farmerRemovedFromFavorites": "Фермер удален из избранного",
+    "farmerAddedToFavorites": "Фермер добавлен в избранное",
+    "clusterLoadingError": "Ошибка загрузки кластеризации",
+    "dataLoadingError": "Ошибка загрузки данных",
+    "searchSettings": "Общие настройки поиска фермеров",
+    "calculateDistance": "Расчет расстояния",
+    "includeUnripe": "Включать неспелые",
+    "ecoOnly": "Только Eco",
+    "changeAddress": "Изменить адрес",
+    "setAddress": "Указать адрес",
+    "favoriteFarmers": "Избранные фермеры",
+    "locationSet": "Локация указана",
+    "stats": {
+      "farmers": "Фермеров",
+      "products": "Продуктов",
+      "categories": "Категорий"
+    },
+    "distance": {
+      "upTo25": "До 25 км",
+      "upTo50": "До 50 км",
+      "upTo100": "До 100 км",
+      "upTo200": "До 200 км",
+      "upTo500": "До 500 км",
+      "all": "Все"
+    },
+    "rating": {
+      "any": "Любой рейтинг",
+      "from3": "От 3.0",
+      "from4": "От 4.0",
+      "from45": "От 4.5"
+    },
+    "tabs": {
+      "farmers": "Фермеры",
+      "productsDev": "Продукты Dev",
+      "products": "Продукты",
+      "requests": "Запросы",
+      "market": "Маркет",
+      "purchases": "Мои покупки",
+      "subscriptions": "Мои подписки",
+      "auctions": "Аукционы",
+      "favorites": "Избранное",
+      "statistics": "Статистика"
+    }
+  },
+  "supplier": {
+    "loadingData": "Загрузка данных поставщика...",
+    "statisticsTitle": "Статистика поставщика",
+    "statisticsDescription": "Раздел в разработке. Здесь будет отображаться статистика по вашим участкам, продукции, откликам и аукционам.",
+    "tabs": {
+      "profile": "Профиль",
+      "addPlace": "Добавить участок",
+      "myPlaces": "Мои участки",
+      "customerRequests": "Запросы клиентов",
+      "mapCategories": "Карта категорий",
+      "warehouse": "Склад",
+      "market": "Рынок",
+      "auctions": "Аукционы",
+      "certificates": "Сертификаты",
+      "statistics": "Статистика"
+    },
+    "common": {
+      "save": "Сохранить",
+      "cancel": "Отмена",
+      "edit": "Изменить",
+      "serverError": "Ошибка сервера"
+    }
+  }
+}
